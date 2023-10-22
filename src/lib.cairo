@@ -1,28 +1,43 @@
-fn main() -> felt252 {
-    fib(16)
-}
+#[starknet::contract]
+mod MyToken {
+    use starknet::ContractAddress;
+    use openzeppelin::token::erc20::ERC20;
 
-fn fib(mut n: felt252) -> felt252 {
-    let mut a: felt252 = 0;
-    let mut b: felt252 = 1;
-    loop {
-        if n == 0 {
-            break a;
-        }
-        n = n - 1;
-        let temp = b;
-        b = a + b;
-        a = temp;
+    #[storage]
+    struct Storage {
+        // The decimals value is stored locally
+        _decimals: u8,
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::fib;
+    #[constructor]
+    fn constructor(
+        ref self: ContractState,
+        decimals: u8
+    ) {
+        // Call the internal function that writes decimals to storage
+        self._set_decimals(decimals);
 
-    #[test]
-    #[available_gas(100000)]
-    fn it_works() {
-        assert(fib(16) == 987, 'it works!');
+        // Initialize ERC20
+        let name = 'MyToken';
+        let symbol = 'MTK';
+
+        let mut unsafe_state = ERC20::unsafe_new_contract_state();
+        ERC20::InternalImpl::initializer(ref unsafe_state, name, symbol);
+    }
+
+    /// This is a standalone function for brevity.
+    /// It's recommended to create an implementation of IERC20
+    /// to ensure that the contract exposes the entire ERC20 interface.
+    /// See the previous example.
+    #[external(v0)]
+    fn decimals(self: @ContractState) -> u8 {
+        self._decimals.read()
+    }
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        fn _set_decimals(ref self: ContractState, decimals: u8) {
+            self._decimals.write(decimals);
+        }
     }
 }
